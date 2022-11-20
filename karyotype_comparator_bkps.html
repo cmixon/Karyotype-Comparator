@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <!-- <meta http-equiv="X-UA-Compatible" content="IE=edge"> -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="karyotype, comparison, comparator, cytogenetics, chromosome">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js"></script>
+    <script src="../data/unique400Bands.js"></script>
+    <title>Karyotype Comparator</title>
+</head>
+<style>
+    .button {
+        font-size: 18px;
+        background-color: gray;
+        color: white;
+        transition-duration: 0.1s;
+    }
+
+        .button:hover {
+            background-color: darkslateblue;
+            border-radius: 6px;
+            color: yellowgreen;
+        }
+    table{
+        border-spacing: 5px;
+    }
+</style>
+
+<body>
+    <h3 style="text-align: center;">Karyotype Comparator</h3>
+    <ul>
+        <li>To compare two karyotypes, enter each in the appropriate field.  Multiple clones are allowed.</li>
+        <li>The Check Breakpoints and Check Syntax buttons apply only to the karyotype in the current karyotype field.</li>
+        <li>Breakpoints are checked at the 400 band level.  Since the breakpoint parser is reliable only on syntactically correct strings, check syntax first on any complex string.</li>
+        <li>Each element with a syntactical error is reported but the error is not highlighted; note that the use of the tilde (~) for ranges is strictly enforced by the parser.  Long form ISCN is not supported.</li>
+    </ul>
+    <form id="Input">
+        <span></span>Enter previous karyotype: </span><br>
+        <textarea type="text" class="Input" id="previousKaryotype" cols="80" rows="5"></textarea>
+        <br>
+        <span id="newKaryotype">Enter current karyotype: </span><br>
+        <textarea type="text" class="Input" id="currentKaryotype" cols="80" rows="5"></textarea><br>
+    </form>
+    <p>
+        <button class="button" onclick="submit()">Analyze</button>&emsp;
+        <button class="button" onclick="reload()">Reset</button>&emsp;
+        <button class="button" onclick="ignoreBreakpoints()">Ignore Breakpoints</button>&emsp;
+        <button class="button" onclick="checkSyntax()">Check Syntax</button>
+        <button class="button" onclick="checkBreakpoints()">Check Breakpoints</button>
+        <button class="button" onclick="listBreakpoints()">List Breakpoints</button>
+    </p>
+    <div id="results">
+        These values are <strong style="color:green">gained</strong>: <br><span id="gained"></span><br><br>
+        These values are <strong style="color:red">lost</strong>: <br><span id="lost"></span><br><br>
+        These values are <strong>retained</strong>: <br><span id="kept"></span><br>
+        <!--<br/>The expected <strong>count</strong> is: &emsp;<span id="count"></span>-->
+        <br />Check these elements for<strong> typographical errors</strong>:&emsp;<span id="syntax"></span>
+        <br />These breakpoints are <strong>not recognized</strong>:&emsp;<span id="breakpoints_recognized"></span><span id="breakpoints_unrecognized"></span><br>
+        <strong>All Breakpoints:</strong><table id="breakpoints_list"></table>
+    </div>
+
+
+</body>
+<script>
+
+    window.onbeforeunload = function () {
+        var previous = document.getElementById("previousKaryotype").value;
+        sessionStorage.setItem("previous", previous);
+        var current = document.getElementById("currentKaryotype").value;
+        sessionStorage.setItem("current", current);
+    }
+    window.onload = function () {
+        var x = sessionStorage.getItem("previous");
+        $('#previousKaryotype').val(x);
+        var y = sessionStorage.getItem("current");
+        $('#currentKaryotype').val(y);
+    }
+
+    let previousKaryotype = sessionStorage.getItem("previous");
+
+    //handle )[], / between karyotypes, mar etc. before [], ranges as in x1-2
+    let previous_Array = previousKaryotype.replace(/\)\[/g, "),[")
+    .replace(/\]\/([0-9]+)/g, "],$1") //see next for comments
+    .replace(/([0-9a-z]+)\[/g, "$1,[")
+    .replace(/x[0-9]+-[0-9]+/g, "")
+    .replace(/x[0-9]+~[0-9]+/g, "")
+    .replace(/x[0-9]+/g, "")
+    .replace(/x/g, "") 
+    .replace(/\+[/0-9]+[-~]?[0-9]+/g,"")
+    .replace(/\[[0-9]*\]/g,'')
+    .replace(/([0-9]+)('mar')/g, "$1,$2")
+    .replace(/[/]?46,XY\[[0-9]+\]/g, "46XY")
+    .replace(/[/]?46,XX\[[0-9]+\]/g, "46XX")
+    .replace(/\/\//g,",")
+    .replace(/\n/g,"")
+    .split(/[,]+/);
+    console.log(previous_Array);
+    let currentKaryotype = sessionStorage.getItem("current");
+    let current_Array = currentKaryotype.replace(/\)\[/g, "),[") //separate []/46
+        .replace(/\]\/([0-9]+)/g, "],$1") //separate [] from /46 
+        .replace(/([0-9a-z]+)\[/g, "$1,[") //separate +8[]
+        .replace(/x[0-9]+-[0-9]+/g, "") //removes x1-2 from t(9;22)x1-2
+        .replace(/x[0-9]+~[0-9]+/g, "") // same for x1~2
+        .replace(/x[0-9]+/g, "") // same for x2
+        .replace(/x/g, "")  //same for x
+        //..replace(/\+[/0-9]+[-~]?[0-9]+/g,"")
+        .replace(/\[[0-9]*\]/g,'')
+       // .replace(/([0-9]+)('mar')/g, "$1,$2")//separate +1~3mar=> +1~3,mar
+        .replace(/[/]?46,XY\[[0-9]+\]/g, "46XY") // removes comma including when not first karyotype
+        .replace(/[/]?46,XX\[[0-9]+\]/g, "46XX") //same for 46,XX
+        .replace(/\n/g,"") //handle inadvertent \n in karyotype entry
+        .replace(/\/\//g,",") //handle double // in karyotype
+        .split(/[,]+/);
+    //console.log(current_Array.toString().match(noBreakpoints));
+    //console.log(previous_Array.toString().match(noBreakpoints));
+    console.log(current_Array);
+    let testVariable = document.getElementById("previousKaryotype").innerHTML;
+    //console.log(testVariable);
+
+    //diff arrays; use as alt to notInCurrent() and notInPrevious(); general format
+    const diffArrays = (array1, array2) => {
+        const filtered = array1.filter(el => {
+            return array2.indexOf(el) === -1;
+        });
+        return filtered;
+    };
+
+    //filter to show what is in first but not in second
+    const notInCurrent = (previous_Array, current_Array) => {
+        const filtered = previous_Array.filter(el => {
+            return current_Array.indexOf(el) === -1;
+        });
+        return filtered;
+    };
+    //console.log(notInCurrent(previous_Array, current_Array));
+
+    //filter to show what is in second but not in first
+    const notInPrevious = (current_Array, previous_Array) => {
+        const filtered = current_Array.filter(el => {
+            return previous_Array.indexOf(el) === -1;
+        });
+        return filtered;
+    };
+    let reference_array = [/del/, /der/, /inv/];
+    let includes = reference_array.includes(/del/);
+    let found_array = []
+    current_Array.forEach(el => {
+        if (reference_array.includes(el)) { foundfound_array.push(el) }
+    });
+    console.log(found_array);
+
+    const inBoth = (array1, array2) => {
+        const filtered = array1.filter(el => array2.includes(el));
+        return filtered;
+    };
+
+    let prevKary = notInPrevious(current_Array, previous_Array);
+    let currKary = notInCurrent(previous_Array, current_Array);
+    let sameKary = inBoth(current_Array, previous_Array);
+    let sameKary_unique = [...new Set(sameKary)];
+    
+    console.log(currKary);
+    console.log(prevKary);
+    
+    //write what is in second but not first
+    document.getElementById("gained").innerHTML = prevKary.join(', ');
+    //write what is in first but not second
+    document.getElementById("lost").innerHTML = currKary.join(', ');
+    //write what is retained
+    document.getElementById("kept").innerHTML = sameKary_unique.join(', ');
+
+//regex to ignore breakpoints
+let noBreakpoints = new RegExp('[a-z]+\\([0-9]+\\)|[a-z]+\\([0-9]+;[0-9]+\\)|[\+\-][0-9]+|mar|dmin', 'g');
+
+//ignore breakpoints by matching string on regex noBreakpoints
+    
+    let current_Array_noBreakpoints = current_Array.toString().match(noBreakpoints);
+    let previous_Array_noBreakpoints = previous_Array.toString().match(noBreakpoints);
+
+    let prevKaryNB = notInPrevious(current_Array_noBreakpoints, previous_Array_noBreakpoints);  //same as prevKary with No Breakpoints
+    let currKaryNB = notInCurrent(previous_Array_noBreakpoints, current_Array_noBreakpoints);
+    let sameKaryNB = inBoth(current_Array_noBreakpoints, previous_Array_noBreakpoints);
+    console.log(current_Array_noBreakpoints);
+    console.log(previous_Array_noBreakpoints);
+
+    let uniqueNB = [...new Set(sameKaryNB)]; //removes duplicates by first creating a Set then converting back to Array
+    //console.log(uniqueNB);
+
+
+    function ignoreBreakpoints() {
+        //write what is in second but not first
+        document.getElementById("gained").innerHTML = prevKaryNB.join(', ');
+        //write what is in first but not second
+        document.getElementById("lost").innerHTML = currKaryNB.join(', ');
+        //write what is retained
+        document.getElementById("kept").innerHTML = uniqueNB.join(', ')
+    }
+
+    // check breakpoints
+
+    function checkBreakpoints() {
+        let bkpts = [];
+        let x = sessionStorage.getItem("current");  //use "x" as variable for quick run through the following transformations
+   
+
+        let xx = x.replace(/([0-9XY])\)([a-z]+)/g,"$1),$2");
+        let y = xx.split(/,/); 
+       
+        let pattern = /[a-z]+\(([0-9XY]+)[;]?([0-9XY]+)?[;]?([0-9XY]+)?[;]?([0-9XY]+)?\)\(([pq][0-9.]+)[;]?([pq][0-9.]+)?[;]?([pq][0-9.]+)?[;]?([pq][0-9.]+)?\)|[a-z]+\(([0-9XY]+)\(([pq][0-9.]+)\)|[a-z]+\(([0-9XY]+);([0-9XY]+)\)\(([pq][0-9\.]+);([pq][0-9\.]+)([pq][0-9\.]+)\)/;
+        
+        for (let i=0; i < y.length; i++){
+            let bkps = y[i].match(pattern);
+            if (bkps == null) continue;
+
+            if (bkps[4] != undefined){
+       bkpts.push(bkps[1]+bkps[5], bkps[2]+bkps[6],bkps[3]+bkps[7],bkps[4]+bkps[8]);
+       
+    } else if (bkps[3] != undefined){
+       bkpts.push(bkps[1]+bkps[5], bkps[2]+bkps[6],bkps[3]+bkps[7]);
+       
+    } else if (bkps[7] != undefined) {
+       bkpts.push(bkps[1]+bkps[5],bkps[2]+bkps[6],bkps[2]+bkps[7]);
+       
+    } else if (bkps[2] != undefined){
+       bkpts.push(bkps[1]+bkps[5],bkps[2]+bkps[6]); 
+       
+    } else if (bkps[6] != undefined) {
+       bkpts.push(bkps[1]+bkps[5],bkps[1]+bkps[6]);
+       
+    } else {
+       bkpts.push(bkps[1]+bkps[5]);
+    
+    } 
+    console.log(bkpts);
+}
+
+        
+        let z = allBands;  //from the separate js file with all bands, here Unique400bands.js; here is where to inject an option to put in band level file of user's choice
+        let regExp = /p....undefined|q....undefined/g;
+        let bkptsUnknown = [];
+        let bkptsKnown = [];
+
+
+        for (let i = 0; i < bkpts.length; i++) {
+            if (regExp.test(bkpts[i])) {
+                bkpts[i] = "20";
+            }
+            console.log(bkpts[i]);
+            if (z.includes(bkpts[i])) {
+                bkptsKnown.push(bkpts[i]);
+            } else {
+                bkptsUnknown.push(bkpts[i]);
+            }
+        }
+        console.log("These are not recognized: " + bkptsUnknown.toString());
+        //console.log(bkpts);
+        console.log(bkptsKnown);
+
+        let toCheck = bkptsUnknown.toString();
+        console.log(toCheck);
+    //write unknown breakpoints to webpage
+        try {
+            let alttoCheckDone = toCheck.match(/[XY0-9]+[p|q][0-9]+[\.]?[0-9]?[0-9]?/g).join(', ');
+            console.log(alttoCheckDone);
+        }
+        catch (err) {
+            console.log(err)
+            document.getElementById("breakpoints_recognized").innerHTML = "All breakpoints are recognized.";
+        } finally {
+            let toCheckDone = toCheck.match(/[XY0-9]+[p|q][0-9]+[\.]?[0-9]?[0-9]?/g).join(', ');
+            document.getElementById("breakpoints_unrecognized").innerHTML = toCheckDone;
+        }
+    }
+
+    //list breakpoints
+
+function listBreakpoints(){
+let input = currentKaryotype;
+let input_edited = input.replace(/([0-9XY])\)([a-z]+)/g,"$1),$2"); //handle der construction before split
+let arrayIscn = input_edited.split(/,/);
+let pattern = /[a-z]+\(([0-9XY]+)[;]?([0-9XY]+)?[;]?([0-9XY]+)?[;]?([0-9XY]+)?\)\(([pq][0-9.]+)[;]?([pq][0-9.]+)?[;]?([pq][0-9.]+)?[;]?([pq][0-9.]+)?\)|[a-z]+\(([0-9XY]+)\(([pq][0-9.]+)\)|[a-z]+\(([0-9XY]+);([0-9XY]+)\)\(([pq][0-9\.]+);([pq][0-9\.]+)([pq][0-9\.]+)\)/;
+console.log(arrayIscn);
+for (let i=0; i < arrayIscn.length; i++){
+    let bkps = arrayIscn[i].match(pattern);
+    if (bkps == null) continue;
+   // console.log(bkps);
+
+   if (bkps[4] != undefined){
+       console.log(bkps[1]+bkps[5], bkps[2]+bkps[6],bkps[3]+bkps[7],bkps[4]+bkps[8]);
+       document.getElementById("breakpoints_list").innerHTML += "<tr>" + "<td>" + bkps[1]+bkps[5] + "</td>" + "<td>" + bkps[2]+bkps[6] + "</td>" + "<td>" + bkps[3]+bkps[7] + "</td>" + "<td>" + bkps[4]+bkps[8] + "</td>" + "</tr>";
+    } else if (bkps[3] != undefined){
+       console.log(bkps[1]+bkps[5], bkps[2]+bkps[6],bkps[3]+bkps[7]);
+       document.getElementById("breakpoints_list").innerHTML += "<tr>" + "<td>" + bkps[1]+bkps[5] + "</td>" + "<td>" + bkps[2]+bkps[6] + "</td>" + "<td>" + bkps[3]+bkps[7] + "</td>" + "</tr>";
+    } else if (bkps[7] != undefined) {
+       console.log(bkps[1]+bkps[5],bkps[2]+bkps[6],bkps[2]+bkps[7]);
+       document.getElementById("breakpoints_list").innerHTML += "<tr>" + "<td>" + bkps[1]+bkps[5] + "</td>" + "<td>" + bkps[2]+bkps[6] + "</td>" + "<td>" + bkps[2]+bkps[7] + "</td>" +"</tr>";
+    } else if (bkps[2] != undefined){
+       console.log(bkps[1]+bkps[5],bkps[2]+bkps[6]); 
+       document.getElementById("breakpoints_list").innerHTML += "<tr>" + "<td>" + bkps[1]+bkps[5] + "</td>" + "<td>" + bkps[2]+bkps[6] + "</td>" + "</tr>";
+    } else if (bkps[6] != undefined) {
+       console.log(bkps[1]+bkps[5],bkps[1]+bkps[6]);
+       document.getElementById("breakpoints_list").innerHTML += "<tr>" + "<td>" + bkps[1]+bkps[5] + "</td>" + "<td>" + bkps[1]+bkps[6] + "</td>" + "</tr>";
+    } else {
+       console.log(bkps[1]+bkps[5]);
+       document.getElementById("breakpoints_list").innerHTML += "<tr>" + "<td>" + bkps[1]+bkps[5] + "</td>" + "</tr>";
+    } 
+}
+}
+    //check syntax
+
+    function checkSyntax() {
+
+        //regex handles most common elements including "?" for unknowns but not for uncertains; handles derivatives
+        
+        let abbreviations = /[+|-]?(del)\([XY0-9]+\)\([p|q][0-9]+[\.]?[0-9]?[0-9]?[p|q]?[0-9]{0,}[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|[+|-]?(add)\([XY0-9]+\)\([p|q][0-9]+[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|[+|-]?(inv)\([XY0-9]+\)\([p|q][0-9]+[\.]?[0-9]?[0-9]?[p|q][0-9]+[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|[+|-]?(dic)\([XY0-9]+\)\([p|q][0-9]+[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|(^[+|-]?i)\([XY0-9]+\)\([p|q][0-9]+[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|[+|-]?(psu dic)\([XY0-9]+\)\([p|q][0-9]+[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|[+|-]?(del)\([XY0-9]+\)[c]?[x]?[0-9]{0,}$|[+|-]?(add)\([XY0-9]+\)[c]?[x]?[0-9]{0,}$|[+|-]?(inv)\([XY0-9]+\)[c]?[x]?[0-9]{0,}$|[+|-]?[(dic)|(idic)]\([XY0-9]+\)[c]?[x]?[0-9]{0,}$|[+|-]?(psu dic)\([XY0-9]+\)[c]?[x]?[0-9]{0,}$|[+|-]?dic\([XY0-9?]+;[0-9?]+[;]?[0-9?]?[0-9]?\)\([p|q|?][0-9]+[\.]?[0-9]?[0-9]?\;[p|q|?][0-9]+[\.]?[0-9]?[0-9]?[;]?[p|q|?]?[0-9]?[0-9]?[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|[+|-]?dic\([0-9?]+;[0-9?]+\)[c]?[x]?[0-9]{0,}$|(^[+|-]?i)\([XY0-9]+\)[c]?[x]?[0-9]{0,}$|[+|-]?t\([XY0-9?]+;[0-9?]+[;]?[0-9?]?[0-9]?\)\([p|q|?][0-9]{0,2}[\.]?[0-9]?[0-9]?\;[p|q|?][0-9]{0,2}[\.]?[0-9]?[0-9]?[;]?[p|q|?]?[0-9]{0,2}[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|t\([0-9?]+;[0-9?]+\)[c]?[x]?[0-9]{0,}$|[+|-]?t\([0-9?]+;[0-9?]+;[0-9?]+\)[c]?[x]?[0-9]{0,}$|[+|-]?(ins)\([XY0-9]+;[\?]?[0-9]?[0-9]?\)\([p|q][0-9]+[\.]?[0-9]?[0-9]?;[\?]?[p|q]?[0-9]?[0-9]?[\.]?[0-9]?[0-9]?[p|q]?[0-9]?[0-9]?[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|[+|-]?(ins)\([XY0-9]+;[\?]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}$|^[+|-]?[0-9]+[~0-9]{0,}$|^X[X|Y]*|^XX[X|Y]*|^[+-]{1}Y|^[+-]{1}X|^[+|-][0-9]{0,}[~]?[0-9]{0,}mar|^dmin|^idem|[+|-][0-9]{0,2}([mar])?\[[0-9]+\](\/[0-9]+)?|[+|-]?(dup)\([XY0-9]+\)\([p|q][0-9]+[\.]?[0-9]?[0-9]?[p|q][0-9]+[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|[+|-]?(dup)\([XY0-9]+\)[c]?[x]?[0-9]{0,}$|[+|-]?der\([XY0-9?]+\)|[+|-]?der\([XY0-9?]+;[0-9?]+\)\([p|q|?][0-9]{0,2}[\.]?[0-9]?[0-9]?\;[p|q|?][0-9]{0,2}[\.]?[0-9]?[0-9]?\)/
+        
+        //parse for dropped commas prior to splitting string on comma
+        let commaCheck =sessionStorage.getItem("current").match(/\)[+|-][0-9]{1,2}|[+|-]?[0-9]+[delicta]{1,}|[X|Y][+|-]?[0-9]{1,2}|[X|Y][+|-]?[delicta]{1,3}|^der[0-9]+\)[a-z]+|der\([0-9]+[a-z]+|\)\)|\(\(/g);
+        console.log(commaCheck);
+        if (commaCheck == null){ commaCheck = [];}
+    
+        let test = sessionStorage.getItem("current").replace(/\)([\w])/g, "),$1").split(","); //use 'test' instead of 'currentKaryotype' for brevity in for loop below
+        let typo = [... commaCheck];  // put results of comma check into typos array, then parse against the abbreviations regex, above
+
+        for (let i = 0; i < test.length; i++)
+            if (abbreviations.test(test[i])) {
+                console.log(test[i] + "is in");
+            } else {
+                console.log(test[i] + "is out")
+                typo.push(test[i]);
+            }
+        console.log(typo);
+        if (typo[0] == undefined) {
+            document.getElementById("syntax").innerHTML = "No errors are identifed."
+        } else {
+            document.getElementById("syntax").innerHTML = typo.join(",  ");
+        }
+
+//for chromosome count of each clone
+
+/* var centric_body, countPlus, countMinus, countDer, countDic, countSC, current_count;
+
+let str=sessionStorage.getItem("current").split("]/");
+console.log(str);
+
+for ( i in str) {
+    centric_body = 0;  //reset count for each interation
+
+if (str[i].match(/idem/g) == undefined){
+    countIdem = 44;  //if there is no idem, start count at 44; otherwise start at idem
+} else {
+    true
+}
+if (str[i].match(/\+/g) == undefined){
+    countPlus = 0;
+} else {
+    countPlus = str[i].match(/\+/g).length;
+}
+
+if (str[i].match(/\-/g) == undefined){
+    countMinus = 0;
+} else {
+    countMinus = str[i].match(/\-/g).length;
+}
+
+if (str[i].match(/(,der)\([XY0-9]+;/g) == undefined){
+    countDer = 0;
+} else {
+    countDer = str[i].match(/(,der)\([XY0-9]+;/g).length;
+}
+
+if (str[i].match(/(,dic)\([XY0-9]+;/g) == undefined){
+    countDic = 0;
+} else {
+    countDic = str[i].match(/(,dic)\([XY0-9]+;/g).length;
+}
+
+if (str[i].match(/X|Y/g) == undefined){  //handles sex chromosome aneuploidy
+    countSC = 0;
+} else {
+    countSC = str[i].match(/X|Y/g).length;
+}
+
+centric_body = countIdem + countSC + countPlus - countMinus - countDer - countDic;
+document.getElementById("count").innerHTML += centric_body + " /  ";
+countIdem = centric_body;
+} */ 
+    }
+    //analyze, i.e. load karyotype information, via submit function and reset via reload function
+
+    function submit() {
+        window.location.reload();
+    }
+    function reload() {
+        document.getElementById("Input").reset(); //clears form data
+        document.getElementById("gained").innerHTML = ""; //overwrites results fields
+        document.getElementById("lost").innerHTML = "";
+        document.getElementById("kept").innerHTML = "";
+        document.getElementById("breakpoints_recognized").innerHTML = "";
+        document.getElementById("breakpoints_unrecognized").innerHTML = "";
+        document.getElementById("syntax").innerHTML = "";
+        document.getElementById("breakpoints_list").innerHTML = "";
+
+    }
+</script>
+
+</html>
