@@ -105,9 +105,9 @@
         .replace(/x[0-9]+~[0-9]+/g, "") // same for x1~2
         .replace(/x[0-9]+/g, "") // same for x2
         .replace(/x/g, "")  //same for x
-        //..replace(/\+[/0-9]+[-~]?[0-9]+/g,"")
+        .replace(/\+[/0-9]+[-~]?[0-9]+/g,"")
         .replace(/\[[0-9]*\]/g,'')
-       // .replace(/([0-9]+)('mar')/g, "$1,$2")//separate +1~3mar=> +1~3,mar
+        .replace(/([0-9]+)('mar')/g, "$1,$2")//separate +1~3mar=> +1~3,mar
         .replace(/[/]?46,XY\[[0-9]+\]/g, "46XY") // removes comma including when not first karyotype
         .replace(/[/]?46,XX\[[0-9]+\]/g, "46XX") //same for 46,XX
         .replace(/\n/g,"") //handle inadvertent \n in karyotype entry
