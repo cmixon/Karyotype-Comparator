@@ -56,7 +56,8 @@
         These values are <strong style="color:red">lost</strong>: <br><span id="lost"></span><br><br>
         These values are <strong>retained</strong>: <br><span id="kept"></span><br>
         <!--<br/>The expected <strong>count</strong> is: &emsp;<span id="count"></span>-->
-        <br />Check these elements for<strong> typographical errors</strong>:&emsp;<span id="syntax"></span>
+        <br />Check these elements for<strong> dropped commas</strong>:&emsp;<span id="commas"></span>
+        <br />Check these elements for<strong> other typographical errors</strong>:&emsp;<span id="syntax"></span>
         <br />These breakpoints are <strong>not recognized</strong>:&emsp;<span id="breakpoints_recognized"></span><span id="breakpoints_unrecognized"></span><br>
         <strong>All Breakpoints:</strong><table id="breakpoints_list"></table>
     </div>
@@ -105,9 +106,10 @@
         .replace(/x[0-9]+~[0-9]+/g, "") // same for x1~2
         .replace(/x[0-9]+/g, "") // same for x2
         .replace(/x/g, "")  //same for x
-        .replace(/\+[/0-9]+[-~]?[0-9]+/g,"")
+        .replace(/[+-][/0-9]+[-~]?[0-9]*/g,"")
         .replace(/\[[0-9]*\]/g,'')
         .replace(/([0-9]+)('mar')/g, "$1,$2")//separate +1~3mar=> +1~3,mar
+        .replace(/([0-9]+)('dmin')/g, "$1,$2")//same for dmin
         .replace(/[/]?46,XY\[[0-9]+\]/g, "46XY") // removes comma including when not first karyotype
         .replace(/[/]?46,XX\[[0-9]+\]/g, "46XX") //same for 46,XX
         .replace(/\n/g,"") //handle inadvertent \n in karyotype entry
@@ -314,15 +316,19 @@ for (let i=0; i < arrayIscn.length; i++){
 
         //regex handles most common elements including "?" for unknowns but not for uncertains; handles derivatives
         
-        let abbreviations = /[+|-]?(del)\([XY0-9]+\)\([p|q][0-9]+[\.]?[0-9]?[0-9]?[p|q]?[0-9]{0,}[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|[+|-]?(add)\([XY0-9]+\)\([p|q][0-9]+[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|[+|-]?(inv)\([XY0-9]+\)\([p|q][0-9]+[\.]?[0-9]?[0-9]?[p|q][0-9]+[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|[+|-]?(dic)\([XY0-9]+\)\([p|q][0-9]+[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|(^[+|-]?i)\([XY0-9]+\)\([p|q][0-9]+[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|[+|-]?(psu dic)\([XY0-9]+\)\([p|q][0-9]+[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|[+|-]?(del)\([XY0-9]+\)[c]?[x]?[0-9]{0,}$|[+|-]?(add)\([XY0-9]+\)[c]?[x]?[0-9]{0,}$|[+|-]?(inv)\([XY0-9]+\)[c]?[x]?[0-9]{0,}$|[+|-]?[(dic)|(idic)]\([XY0-9]+\)[c]?[x]?[0-9]{0,}$|[+|-]?(psu dic)\([XY0-9]+\)[c]?[x]?[0-9]{0,}$|[+|-]?dic\([XY0-9?]+;[0-9?]+[;]?[0-9?]?[0-9]?\)\([p|q|?][0-9]+[\.]?[0-9]?[0-9]?\;[p|q|?][0-9]+[\.]?[0-9]?[0-9]?[;]?[p|q|?]?[0-9]?[0-9]?[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|[+|-]?dic\([0-9?]+;[0-9?]+\)[c]?[x]?[0-9]{0,}$|(^[+|-]?i)\([XY0-9]+\)[c]?[x]?[0-9]{0,}$|[+|-]?t\([XY0-9?]+;[0-9?]+[;]?[0-9?]?[0-9]?\)\([p|q|?][0-9]{0,2}[\.]?[0-9]?[0-9]?\;[p|q|?][0-9]{0,2}[\.]?[0-9]?[0-9]?[;]?[p|q|?]?[0-9]{0,2}[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|t\([0-9?]+;[0-9?]+\)[c]?[x]?[0-9]{0,}$|[+|-]?t\([0-9?]+;[0-9?]+;[0-9?]+\)[c]?[x]?[0-9]{0,}$|[+|-]?(ins)\([XY0-9]+;[\?]?[0-9]?[0-9]?\)\([p|q][0-9]+[\.]?[0-9]?[0-9]?;[\?]?[p|q]?[0-9]?[0-9]?[\.]?[0-9]?[0-9]?[p|q]?[0-9]?[0-9]?[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|[+|-]?(ins)\([XY0-9]+;[\?]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}$|^[+|-]?[0-9]+[~0-9]{0,}$|^X[X|Y]*|^XX[X|Y]*|^[+-]{1}Y|^[+-]{1}X|^[+|-][0-9]{0,}[~]?[0-9]{0,}mar|^dmin|^idem|[+|-][0-9]{0,2}([mar])?\[[0-9]+\](\/[0-9]+)?|[+|-]?(dup)\([XY0-9]+\)\([p|q][0-9]+[\.]?[0-9]?[0-9]?[p|q][0-9]+[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|[+|-]?(dup)\([XY0-9]+\)[c]?[x]?[0-9]{0,}$|[+|-]?der\([XY0-9?]+\)|[+|-]?der\([XY0-9?]+;[0-9?]+\)\([p|q|?][0-9]{0,2}[\.]?[0-9]?[0-9]?\;[p|q|?][0-9]{0,2}[\.]?[0-9]?[0-9]?\)/
+            let abbreviations = /[+|-]?(del)\([XY0-9]+\)\([p|q][0-9]+[\.]?[0-9]?[0-9]?[p|q]?[0-9]{0,}[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|[+|-]?(add)\([XY0-9]+\)\([p|q][0-9]+[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|[+|-]?(inv)\([XY0-9]+\)\([p|q][0-9]+[\.]?[0-9]?[0-9]?[p|q][0-9]+[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|[+|-]?(dic)\([XY0-9]+\)\([p|q][0-9]+[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|(^[+|-]?i)\([XY0-9]+\)\([p|q][0-9]+[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|[+|-]?(psu dic)\([XY0-9]+\)\([p|q][0-9]+[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|[+|-]?(del)\([XY0-9]+\)[c]?[x]?[0-9]{0,}$|[+|-]?(add)\([XY0-9]+\)[c]?[x]?[0-9]{0,}$|[+|-]?(inv)\([XY0-9]+\)[c]?[x]?[0-9]{0,}$|[+|-]?[(dic)|(idic)]\([XY0-9]+\)[c]?[x]?[0-9]{0,}$|[+|-]?(psu dic)\([XY0-9]+\)[c]?[x]?[0-9]{0,}$|[+|-]?dic\([XY0-9?]+;[0-9?]+[;]?[0-9?]?[0-9]?\)\([p|q|?][0-9]+[\.]?[0-9]?[0-9]?\;[p|q|?][0-9]+[\.]?[0-9]?[0-9]?[;]?[p|q|?]?[0-9]?[0-9]?[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|[+|-]?dic\([0-9?]+;[0-9?]+\)[c]?[x]?[0-9]{0,}$|(^[+|-]?i)\([XY0-9]+\)[c]?[x]?[0-9]{0,}$|[+|-]?t\([XY0-9?]+;[0-9?]+[;]?[0-9?]?[0-9]?\)\([p|q|?][0-9]{0,2}[\.]?[0-9]?[0-9]?\;[p|q|?][0-9]{0,2}[\.]?[0-9]?[0-9]?[;]?[p|q|?]?[0-9]{0,2}[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|t\([0-9?]+;[0-9?]+\)[c]?[x]?[0-9]{0,}$|[+|-]?t\([0-9?]+;[0-9?]+;[0-9?]+\)[c]?[x]?[0-9]{0,}$|[+|-]?(ins)\([XY0-9]+;[\?]?[0-9]?[0-9]?\)\([p|q][0-9]+[\.]?[0-9]?[0-9]?;[\?]?[p|q]?[0-9]?[0-9]?[\.]?[0-9]?[0-9]?[p|q]?[0-9]?[0-9]?[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|[+|-]?(ins)\([XY0-9]+;[\?]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}$|^[+|-]?[0-9]+[~0-9]{0,}$|^X[X|Y]*|^XX[X|Y]*|^[+-]{1}Y|^[+-]{1}X|^[+|-][0-9]{0,}[~]?[0-9]{0,}mar|^dmin|^idem|[+|-][0-9]{0,2}([mar])?\[[0-9]+\](\/[0-9]+)?|[+|-]?(dup)\([XY0-9]+\)\([p|q][0-9]+[\.]?[0-9]?[0-9]?[p|q][0-9]+[\.]?[0-9]?[0-9]?\)[c]?[x]?[0-9]{0,}|[+|-]?(dup)\([XY0-9]+\)[c]?[x]?[0-9]{0,}$|[+|-]?der\([XY0-9?]+\)|[+|-]?der\([XY0-9?]+;[0-9?]+\)\([p|q|?][0-9]{0,2}[\.]?[0-9]?[0-9]?\;[p|q|?][0-9]{0,2}[\.]?[0-9]?[0-9]?\)|[0-9]*[~]?[0-9]*dmin/
         
         //parse for dropped commas prior to splitting string on comma
-        let commaCheck =sessionStorage.getItem("current").match(/\)[+|-][0-9]{1,2}|[+|-]?[0-9]+[delicta]{1,}|[X|Y][+|-]?[0-9]{1,2}|[X|Y][+|-]?[delicta]{1,3}|^der[0-9]+\)[a-z]+|der\([0-9]+[a-z]+|\)\)|\(\(/g);
+        let commaCheck =sessionStorage.getItem("current").replace(/der\(([0-9XY]+)\)/g,"der($1R").match(/[0-9]+[XY]+|[XY]+[-+0-9a-z]+|\)[a-z]+\([0-9]+\)|\)[-+]?[0-9]+[-+]?[0-9]{0,2}|[\)0-9]+[0-9]+[-+]{0,}[0-9]{0,}[-~]?[0-9]{0,}mar|\)(mar|dim)|[\)a-z]+[0-9]+[-~]?[0-9]{0,}dmin|\)t\([0-9XY]+;[0-9XY]+\)\([pq][0-9]+[.]?[0-9]{0,2};[pq][0-9]+[.]?[0-9]{0,2}\)|\)[-+]?[0-9]+|[-+][0-9]+[a-z]+/g);
         console.log(commaCheck);
-        if (commaCheck == null){ commaCheck = [];}
+        if (commaCheck == null){
+                document.getElementById("commas").innerHTML = "No dropped commas are identifed.";
+            } else {
+                    document.getElementById("commas").innerHTML = commaCheck.join("' ' ' ' '  ");
+            }
     
         let test = sessionStorage.getItem("current").replace(/\)([\w])/g, "),$1").split(","); //use 'test' instead of 'currentKaryotype' for brevity in for loop below
-        let typo = [... commaCheck];  // put results of comma check into typos array, then parse against the abbreviations regex, above
+        let typo = [ ] ; 
 
         for (let i = 0; i < test.length; i++)
             if (abbreviations.test(test[i])) {
@@ -335,7 +341,7 @@ for (let i=0; i < arrayIscn.length; i++){
         if (typo[0] == undefined) {
             document.getElementById("syntax").innerHTML = "No errors are identifed."
         } else {
-            document.getElementById("syntax").innerHTML = typo.join(",  ");
+                document.getElementById("syntax").innerHTML = typo.join(",   ");
         }
 
 //for chromosome count of each clone
