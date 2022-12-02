@@ -1,0 +1,3 @@
+# Karyotype-Comparator
+
+Compare previous with current karyotype and proofread current karyotype for dropped commas, parentheses, brackets, or misplaced semicolons.  Evaluate breakpoints for inclusion at 400 band level, and list all breakpoints identified in the current karyotype.  The analysis buttons are self-explanatory, but the "Analyze" button should always be pressed first after a new karyotype is uploaded or an existing one is updated in either text box.  The "Ignore Breakpoints" button removes breapoints from the comparison to allow for differences in breakpoint assignment and also simplifies other aspects of a complex ISCN string.
